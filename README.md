@@ -1,6 +1,5 @@
-# Redbird Reverse Proxy
-
-## With built in Cluster, HTTP2, [LetsEncrypt](https://letsencrypt.org/) and [Docker](https://www.docker.com/) support
+#Redbird Reverse Proxy
+##With built in Cluster, HTTP2,[LetsEncrypt](https://letsencrypt.org/) and [Docker](https://www.docker.com/) support
 
 
 ![redbird](http://cliparts.co/cliparts/6cr/o9d/6cro9dRzi.jpg)
@@ -18,12 +17,11 @@ Developed by [manast](http://twitter.com/manast)
 [![BuildStatus](https://secure.travis-ci.org/OptimalBits/redbird.png?branch=master)](http://travis-ci.org/OptimalBits/redbird)
 [![NPM version](https://badge.fury.io/js/redbird.svg)](http://badge.fury.io/js/redbird)
 
-## SUPER HOT
-
+##SUPER HOT
 Support for HTTP2. You can now enable HTTP2 just by setting the HTTP2 flag to true. Keep in mind that HTTP2 requires
 SSL/TLS certificates. Thankfully we also support LetsEncrypt so this becomes easy as pie.
 
-## HOT
+##HOT
 
 We have now support for automatic generation of SSL certificates using [LetsEncrypt](#letsencrypt). Zero config setup for your
 TLS protected services that just works.
@@ -121,7 +119,7 @@ var proxy = require('redbird')({
 The HTTPS proxy supports virtual hosts by using SNI (which most modern browsers support: IE7 and above).
 The proxying is performed by hostname, so you must use the same SSL certificates for a given hostname independently of its paths.
 
-### LetsEncrypt
+###LetsEncrypt
 
 Some important considerations when using LetsEncrypt. You need to agree to LetsEncrypt [terms of service](https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf). When using
 LetsEncrypt, the obtained certificates will be copied to disk to the specified path. Its your responsibility to backup, or save persistently when applicable. Keep in mind that

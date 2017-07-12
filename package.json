@@ -23,25 +23,25 @@
   },
   "homepage": "https://github.com/OptimalBits/redbird",
   "dependencies": {
-    "bluebird": "^3.4.0",
-    "bunyan": "^1.8.1",
-    "dolphin": "*",
-    "http-proxy": "^1.14.0",
-    "le-challenge-fs": "^2.0.4",
-    "le-store-certbot": "^2.0.3",
-    "letsencrypt": "^2.1.6",
-    "lodash": "^4.13.1",
-    "lru-cache": "^4.0.1",
-    "node-etcd": "^4.2.1",
-    "object-hash": "^1.1.2",
-    "safetimeout": "^0.1.1",
-    "spdy": "^3.4.0",
-    "valid-url": "^1.0.9"
+    "bluebird": "3.4.0",
+    "bunyan": "1.8.1",
+    "dolphin": "https://github.com/beecode-rs/dolphin.git",
+    "http-proxy": "1.14.0",
+    "le-challenge-fs": "2.0.4",
+    "le-store-certbot": "2.0.3",
+    "letsencrypt": "2.1.6",
+    "lodash": "4.13.1",
+    "lru-cache": "4.0.1",
+    "node-etcd": "5.0.3",
+    "object-hash": "1.1.2",
+    "safetimeout": "0.1.1",
+    "spdy": "3.4.0",
+    "valid-url": "1.0.9"
   },
   "devDependencies": {
-    "chai": "^1.9.1",
-    "gulp": "^3.8.11",
-    "gulp-eslint": "^0.9.0",
-    "mocha": "^2.5.3"
+    "chai": "3.5.0",
+    "gulp": "3.8.11",
+    "gulp-eslint": "3.0.1",
+    "mocha": "3.0.2"
   }
 }
