@@ -2,10 +2,27 @@
 
 const server = require('../index.js')({ port: 8080 });
 
+const authService = {
+  checkClaim() {
+    return new Promise(resolve => {
+      setTimeout(() => resolve(true), 200);
+    });
+  }
+};
+
 server.addResolver(/^\/test-route/)
   .use((context, request, response, next) => {
-    console.log('setting route');
-    context.route = 'http://127.0.0.1:8181';
+    authService.checkClaim()
+      .then(
+        authorized => {
+          console.log(`setting route ${authorized}`);
+          context.route = 'http://127.0.0.1:8181';
+          next();
+        }
+      );
+  })
+  .use((context, request, response, next) => {
+    console.log('next thing');
     next();
   });
 
