@@ -42,7 +42,8 @@ describe("Custom Resolver", function(){
 		var redbird = Redbird(options);
 
     expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eql(resolver);
+    expect(redbird.resolvers[0].priority).to.equal(1);
+    expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
 
 		redbird.close();
 
@@ -51,13 +52,15 @@ describe("Custom Resolver", function(){
     options.resolvers = [resolver];
     redbird = new Redbird(options);
     expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eql(resolver);
+    expect(redbird.resolvers[0].priority).to.equal(1);
+    expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
     redbird.close();
 
     resolver.priority = -1;
     redbird = new Redbird(options);
     expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[1]).to.be.eql(resolver);
+    expect(redbird.resolvers[1].priority).to.equal(-1);
+    expect(redbird.resolvers[1].resolverCallback).to.deep.equal(resolver);
     redbird.close();
 
 
