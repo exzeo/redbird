@@ -23,7 +23,7 @@ describe("Custom Resolver", function(){
     var redbird = Redbird(opts);
     expect(redbird.resolvers).to.be.an('array');
     expect(redbird.resolvers.length).to.be.eq(1);
-    expect(redbird.resolvers[0]).to.be.eq(redbird._defaultResolver);
+    expect(redbird.resolvers[0].resolverCallback).to.be.eq(redbird._defaultResolver);
 
     redbird.close();
   });
