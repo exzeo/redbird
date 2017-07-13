@@ -82,7 +82,7 @@ describe("Custom Resolver", function(){
     var redbird = Redbird(opts);
     redbird.addResolver(resolver);
     expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eq(resolver);
+    expect(redbird.resolvers[0].resolverCallback).to.equal(resolver);
 
     redbird.addResolver(resolver);
     expect(redbird.resolvers.length, 'Only allows uniques.').to.be.eq(2);
@@ -90,7 +90,7 @@ describe("Custom Resolver", function(){
 
     redbird.removeResolver(resolver);
     expect(redbird.resolvers.length).to.be.eq(1);
-    expect(redbird.resolvers[0]).to.be.eq(redbird._defaultResolver);
+    expect(redbird.resolvers[0].resolverCallback).to.be.equal(redbird._defaultResolver);
 
     redbird.close();
 
