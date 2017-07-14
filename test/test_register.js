@@ -12,8 +12,17 @@ var opts = {
 	} */
 }
 
+async function mockResolve(proxy, host, path) {
+	return await proxy.resolve({ src: host }, { headers: { host: host }, url: path }, {});
+}
+
+async function mockGetTarget(proxy, host, path, out = {}) {
+	out.request = { headers: { host: host }, url: path };
+	return await proxy._getTarget({ src: host }, out.request, {});
+}
+
 describe("Route registration", function () {
-	it("should register a simple route", function () {
+	it("should register a simple route", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -21,8 +30,9 @@ describe("Route registration", function () {
 		redbird.register('example.com', '192.168.1.2:8080');
 
 		expect(redbird.routing).to.have.property("example.com")
-
-		expect(redbird.resolve('example.com')).to.be.an("object");
+	
+		let result = await mockResolve(redbird, 'example.com');
+		expect(result).to.be.an("object");
 
 		var host = redbird.routing["example.com"];
 		expect(host).to.be.an("array");
@@ -33,26 +43,27 @@ describe("Route registration", function () {
 		expect(host[0].urls[0].href).to.be.eql('http://192.168.1.2:8080/');
 
 		redbird.unregister('example.com', '192.168.1.2:8080');
-		expect(redbird.resolve('example.com')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.be.undefined;
 		redbird.close();
 	});
 
-	it("should resolve domains as case insensitive", function () {
+	it("should resolve domains as case insensitive", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
 
 		redbird.register('example.com', '192.168.1.2:8080');
 
-		var target = redbird.resolve('Example.com');
-		expect(target).to.be.an("object");
-		expect(target.urls[0].hostname).to.be.equal('192.168.1.2');
+		let result = await mockResolve(redbird, 'Example.com');
+		expect(result).to.be.an("object");
+		expect(result.urls[0].hostname).to.be.equal('192.168.1.2');
 
 		redbird.close();
 	});
 
 
-	it("should register multiple routes", function () {
+	it("should register multiple routes", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -92,24 +103,29 @@ describe("Route registration", function () {
 		expect(host[0].urls[0].href).to.be.eql('http://192.168.1.6:8084/');
 
 		redbird.unregister('example1.com');
-		expect(redbird.resolve('example1.com')).to.be.an("undefined")
+		let result = await mockResolve(redbird, 'example1.com');
+		expect(result).to.be.undefined;
 
 		redbird.unregister('example2.com');
-		expect(redbird.resolve('example2.com')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example2.com');
+		expect(result).to.be.undefined;
 
 		redbird.unregister('example3.com');
-		expect(redbird.resolve('example3.com')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example3.com');
+		expect(result).to.be.undefined;
 
 		redbird.unregister('example4.com');
-		expect(redbird.resolve('example4.com')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example4.com');
+		expect(result).to.be.undefined;
 
 		redbird.unregister('example5.com');
-		expect(redbird.resolve('example5.com')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example4.com');
+		expect(result).to.be.undefined;
 
 
 		redbird.close();
 	})
-	it("should register several pathnames within a route", function () {
+	it("should register several pathnames within a route", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -134,12 +150,15 @@ describe("Route registration", function () {
 		expect(host[2].path.length).to.be.least(host[3].path.length)
 
 		redbird.unregister('example.com');
-		expect(redbird.resolve('example.com')).to.be.an("undefined")
+		let result = await mockResolve(redbird, 'example.com');
+		expect(result).to.be.undefined;
 
-		expect(redbird.resolve('example.com', '/foo')).to.be.an("object")
+		result = await mockResolve(redbird, 'example.com', '/foo');
+		expect(result).to.be.an("object")
 
 		redbird.unregister('example.com/foo');
-		expect(redbird.resolve('example.com', '/foo')).to.be.an("undefined")
+		result = await mockResolve(redbird, 'example.com', '/foo');
+		expect(result).to.be.undefined;
 
 		redbird.close();
 	})
@@ -155,7 +174,7 @@ describe("Route registration", function () {
 })
 
 describe("Route resolution", function () {
-	it("should resolve to a correct route", function () {
+	it("should resolve to a correct route", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -166,15 +185,15 @@ describe("Route resolution", function () {
 		redbird.register('example.com/bar', '192.168.1.4:8080');
 		redbird.register('example.com/foo/baz', '192.168.1.3:8080');
 
-		var route = redbird.resolve('example.com', '/foo/asd/1/2');
-		expect(route.path).to.be.eql('/foo')
-		expect(route.urls.length).to.be.eql(1);
-		expect(route.urls[0].href).to.be.eql('http://192.168.1.3:8080/');
+		let result = await mockResolve(redbird, 'example.com', '/foo/asd/1/2');
+		expect(result.path).to.be.eql('/foo')
+		expect(result.urls.length).to.be.eql(1);
+		expect(result.urls[0].href).to.be.eql('http://192.168.1.3:8080/');
 
 		redbird.close();
 	})
 
-	it("should resolve to a correct route with complex path", function () {
+	it("should resolve to a correct route with complex path", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -185,16 +204,15 @@ describe("Route resolution", function () {
 		redbird.register('example.com/bar', '192.168.1.4:8080');
 		redbird.register('example.com/foo/baz', '192.168.1.7:8080');
 
-		var route = redbird.resolve('example.com', '/foo/baz/a/b/c');
-
-		expect(route.path).to.be.eql('/foo/baz')
-		expect(route.urls.length).to.be.eql(1);
-		expect(route.urls[0].href).to.be.eql('http://192.168.1.7:8080/');
+		let result = await mockResolve(redbird, 'example.com', '/foo/baz/a/b/c');
+		expect(result.path).to.be.eql('/foo/baz')
+		expect(result.urls.length).to.be.eql(1);
+		expect(result.urls[0].href).to.be.eql('http://192.168.1.7:8080/');
 
 		redbird.close();
 	})
 
-	it("should resolve to undefined if route not available", function () {
+	it("should resolve to undefined if route not available", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -205,16 +223,16 @@ describe("Route resolution", function () {
 		redbird.register('foobar.com/bar', '192.168.1.4:8080');
 		redbird.register('foobar.com/foo/baz', '192.168.1.3:8080');
 
-		var route = redbird.resolve('wrong.com');
-		expect(route).to.be.an('undefined')
+		let result = await mockResolve(redbird, 'wrong.com');
+		expect(result).to.be.undefined;
 
-		var route = redbird.resolve('foobar.com');
-		expect(route).to.be.an('undefined')
+		result = await mockResolve(redbird, 'foobar.com');
+		expect(result).to.be.undefined;
 
 		redbird.close();
 	})
 
-	it("should get a target if route available", function () {
+	it("should get a target if route available", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -226,25 +244,25 @@ describe("Route resolution", function () {
 		redbird.register('foobar.com/foo/baz', '192.168.1.7:8080');
     redbird.register('foobar.com/media', '192.168.1.7:8080');
 
-		var route = redbird.resolve('example.com', '/qux/a/b/c');
-		expect(route.path).to.be.eql('/');
+		let result = await mockResolve(redbird, 'example.com', '/qux/a/b/c');
+		expect(result.path).to.be.eql('/');
 
-    var route = redbird.resolve('foobar.com', '/medias/');
-		expect(route).to.be.undefined;
+		result = await mockResolve(redbird, 'foobar.com', '/medias/');
+		expect(result).to.be.undefined;
 
-    var route = redbird.resolve('foobar.com', '/mediasa');
-		expect(route).to.be.undefined;
+		result = await mockResolve(redbird, 'foobar.com', '/mediasa');
+		expect(result).to.be.undefined;
 
-    var route = redbird.resolve('foobar.com', '/media/sa');
-		expect(route.path).to.be.eql('/media');
+		result = await mockResolve(redbird, 'foobar.com', '/media/sa');
+		expect(result.path).to.be.eql('/media');
 
-		var target = redbird._getTarget('example.com', { url: '/foo/baz/a/b/c' });
+		const target = await mockGetTarget(redbird, 'example.com', '/foo/baz/a/b/c');
 		expect(target.href).to.be.eql('http://192.168.1.3:8080/')
 
 		redbird.close();
 	})
 
-	it("should get a target with path when necessary", function () {
+	it("should get a target with path when necessary", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -255,20 +273,20 @@ describe("Route resolution", function () {
 		redbird.register('foobar.com/bar', '192.168.1.4:8080');
 		redbird.register('foobar.com/foo/baz', '192.168.1.7:8080');
 
-		var route = redbird.resolve('example.com', '/qux/a/b/c');
-		expect(route.path).to.be.eql('/');
+		let result = await mockResolve(redbird, 'example.com', '/qux/a/b/c');
+		expect(result.path).to.be.eql('/');
 
-		var req = { url: '/foo/baz/a/b/c' }
-		var target = redbird._getTarget('example.com', req);
+		const out = {};
+		const target = await mockGetTarget(redbird, 'example.com', '/foo/baz/a/b/c', out);
 		expect(target.href).to.be.eql('http://192.168.1.3:8080/a/b')
-		expect(req.url).to.be.eql('/a/b/baz/a/b/c')
+		expect(out.request.url).to.be.eql('/a/b/baz/a/b/c')
 
 		redbird.close();
 	})
 })
 
 describe("TLS/SSL", function () {
-	it("should allow TLS/SSL certificates", function () {
+	it("should allow TLS/SSL certificates", async function () {
 		var redbird = Redbird({
 			ssl: {
 				port: 4430
@@ -290,13 +308,14 @@ describe("TLS/SSL", function () {
 		expect(redbird.certs['example.com']).to.be.an("object");
 
 		redbird.unregister('example.com', '192.168.1.1:8080');
-		expect(redbird.resolve('example.com')).to.not.be.an("undefined")
-		expect(redbird.certs['example.com']).to.not.be.an("undefined");
+		let result = await mockResolve(redbird, 'example.com');
+		expect(result).to.not.be.undefined;
+		expect(redbird.certs['example.com']).to.not.be.undefined;
 
 		redbird.unregister('example.com', '192.168.1.2:8080');
-		expect(redbird.resolve('example.com')).to.be.an("undefined")
-		expect(redbird.certs['example.com']).to.be.an("undefined");
-
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.be.undefined;
+		expect(redbird.certs['example.com']).to.be.undefined;
 	})
 	it('Should bind https servers to different ip addresses', function(testDone) {
 
@@ -369,7 +388,7 @@ describe("TLS/SSL", function () {
 
 
 describe("Load balancing", function () {
-	it("should load balance between several targets", function () {
+	it("should load balance between several targets", async function () {
 		var redbird = Redbird(opts);
 
 		expect(redbird.routing).to.be.an("object");
@@ -382,39 +401,42 @@ describe("Load balancing", function () {
 		expect(redbird.routing['example.com'][0].urls.length).to.be.eql(4);
 		expect(redbird.routing['example.com'][0].rr).to.be.eql(0);
 
-		var route = redbird.resolve('example.com', '/foo/qux/a/b/c');
-		expect(route.urls.length).to.be.eql(4);
+		let result = await mockResolve(redbird, 'example.com', '/foo/qux/a/b/c');
+		expect(result.urls.length).to.be.eql(4);
 
 		for (var i = 0; i < 1000; i++) {
-	    	var target = redbird._getTarget('example.com', { url: '/a/b/c' });
+			let target = await mockGetTarget(redbird, 'example.com', '/a/b/c');
 			expect(target.href).to.be.eql('http://192.168.1.1:8080/')
 			expect(redbird.routing['example.com'][0].rr).to.be.eql(1);
 
-			var target = redbird._getTarget('example.com', { url: '/x/y' });
+			target = await mockGetTarget(redbird, 'example.com', '/x/y');
 			expect(target.href).to.be.eql('http://192.168.1.2:8080/')
 			expect(redbird.routing['example.com'][0].rr).to.be.eql(2);
 
-			var target = redbird._getTarget('example.com', { url: '/j' });
+			target = await mockGetTarget(redbird, 'example.com', '/j');
 			expect(target.href).to.be.eql('http://192.168.1.3:8080/')
 			expect(redbird.routing['example.com'][0].rr).to.be.eql(3);
 
-			var target = redbird._getTarget('example.com', { url: '/k/' });
+			target = await mockGetTarget(redbird, 'example.com', '/k/');
 			expect(target.href).to.be.eql('http://192.168.1.4:8080/')
 			expect(redbird.routing['example.com'][0].rr).to.be.eql(0);
 		}
 
 		redbird.unregister('example.com', '192.168.1.1:8080');
-		expect(redbird.resolve('example.com')).to.not.be.an("undefined")
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.not.be.undefined;
 
 		redbird.unregister('example.com', '192.168.1.2:8080');
-		expect(redbird.resolve('example.com')).to.not.be.an("undefined")
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.not.be.undefined;
 
 		redbird.unregister('example.com', '192.168.1.3:8080');
-		expect(redbird.resolve('example.com')).to.not.be.an("undefined")
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.not.be.undefined;
 
 		redbird.unregister('example.com', '192.168.1.4:8080');
-		expect(redbird.resolve('example.com')).to.be.an("undefined")
-
+		result = await mockResolve(redbird, 'example.com');
+		expect(result).to.be.undefined;
 
 		redbird.close();
 	});
