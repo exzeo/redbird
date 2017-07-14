@@ -213,9 +213,6 @@ describe("Custom Resolver", function(){
     result = await mockRequest(proxy, 'somesite.example.com', '/notme/somewhere');
     expect(result.urls[0].hostname).to.be.eq('172.12.0.1');
 
-    // result = await mockRequest(proxy, 'somesite.example.com', '/itsme/somewhere');
-    // expect(result).to.be.undefined;
-
     proxy.close();
   });
 
