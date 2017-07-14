@@ -13,7 +13,9 @@ var opts = {
 }
 
 async function mockResolve(proxy, host, path) {
-	return await proxy.resolve({ src: host }, { headers: { host: host }, url: path }, {});
+	const req = { headers: { host }, url: path };
+	const src = proxy._getSource(req);
+	return await proxy.resolve({ src }, req, {});
 }
 
 async function mockGetTarget(proxy, host, path, out = {}) {
