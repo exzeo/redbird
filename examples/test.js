@@ -12,7 +12,7 @@ const authService = {
 
 server.addResolver({
   match: /^\/test-route/,
-  priority: 50
+  priority: 100
 })
   .use((context, request, response, next) => {
     authService.checkClaim()
@@ -31,15 +31,14 @@ server.addResolver({
 
 server.addResolver({
   match: /^\/test*/,
-  priority: 100
+  priority: 50
 })
   .use((context, request, response, next) => {
-    authService.checkClaim()
+    return authService.checkClaim()
       .then(
         authorized => {
           console.log(`2 setting route ${authorized}`);
           context.route = 'http://127.0.0.1:8181';
-          next();
         }
       );
   })
@@ -54,8 +53,17 @@ server.addResolver({
   .use((context, request, response, next) => {
     response.writeHead(401);
     response.end();
+  });
 
-    next();
+server.addResolver({
+  match: /^\/exception/
+})
+  .use((context, request, response, next) => {
+    throw new Error('test');
+  })
+  .use((error, context, request, response, next) => {
+    response.write('error captured');
+    response.end();
   });
 
 const http = require('http');

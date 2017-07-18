@@ -347,6 +347,74 @@ describe("Custom Resolver", function(){
         }
       }
     });
+
+    it('forwards errors to error middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          next(new Error('test'));
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        })
+        .use((error, context, request, response, next) => {
+          try {
+            expect(error).to.have.property('message', 'test');
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('can use promises to move to the next middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response) => {
+          ++count;
+          return Promise.resolve();
+        })
+        .use((context, request, response, next) => {
+          try {
+            expect(++count).to.equal(2);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('can use promises to move to the next error middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          next(new Error('test'));
+        })
+        .use((error, context, request, response, next) => {
+          error.status = 404;
+          return Promise.resolve(error);
+        })
+        .use((error, context, request, response, next) => {
+          try {
+            expect(error).to.have.property('message', 'test');
+            expect(error).to.have.property('status', 404);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
   });
 
   async function mockRequest(proxy, host, path, out = {}) {
