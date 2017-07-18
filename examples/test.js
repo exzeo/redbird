@@ -1,6 +1,13 @@
 'use strict';
 
-const server = require('../index.js')({ port: 8080 });
+const server = require('../index.js')({ port: 8080, 
+  defaultErrorHandler(error, request, response) {
+    console.log(error.message);
+    response.writeHead(500);
+    response.write('default error handler');
+    response.end();
+  }
+});
 
 const authService = {
   checkClaim() {
