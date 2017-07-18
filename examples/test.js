@@ -66,6 +66,13 @@ server.addResolver({
     response.end();
   });
 
+server.addResolver({
+  match: /^\/unhandled-exception/
+})
+  .use((context, request, response, next) => {
+    throw new Error('test');
+  });
+
 const http = require('http');
 http.createServer((request, response) => {
   response.writeHead(200);
