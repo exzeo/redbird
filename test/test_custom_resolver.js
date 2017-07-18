@@ -29,49 +29,78 @@ describe("Custom Resolver", function(){
     redbird.close();
   });
 
-	it("Should register resolver with right priority", function(){
-    var resolver = function () {
-      return 'http://127.0.0.1:8080';
-    };
+  describe('Should error with with invalid resolvers', () => {
+    it('throws an error when an empty object is passed', () => {
+      const options = _.extend({
+        resolvers: {}
+      }, opts);
+      options.resolvers = {};
+      expect(function () {
+        new Redbird(options)
+      }).to.throw(Error);
+    });
+  });
 
-    resolver.priority = 1;
+	describe("Should register resolver with right priority", () => {
+    it('when resolver is a function', () => {
+      const resolver = function () {
+        return 'http://127.0.0.1:8080';
+      };
 
-    var options = _.extend({
-      resolvers: resolver
-    }, opts);
+      resolver.priority = 1;
 
-		var redbird = Redbird(options);
+      const options = _.extend({
+        resolvers: resolver
+      }, opts);
 
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0].priority).to.equal(1);
-    expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
+      const redbird = Redbird(options);
 
-		redbird.close();
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
+    });
 
+    it('when resolver is an array of functions', () => {
+      const resolver = function () {
+        return 'http://127.0.0.1:8080';
+      };
 
-    // test when an array is sent in as resolvers.
-    options.resolvers = [resolver];
-    redbird = new Redbird(options);
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0].priority).to.equal(1);
-    expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
-    redbird.close();
+      resolver.priority = 1;
 
-    resolver.priority = -1;
-    redbird = new Redbird(options);
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[1].priority).to.equal(-1);
-    expect(redbird.resolvers[1].resolverCallback).to.deep.equal(resolver);
-    redbird.close();
+      const options = _.extend({
+        resolvers: [resolver]
+      }, opts);
 
+      let redbird = Redbird(options);
 
-    // test when invalid resolver is added
-    options.resolvers = {};
-    expect(function () {
-       new Redbird(options)
-    }).to.throw(Error);
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
 
+      resolver.priority = -1;
+      redbird = new Redbird(options);
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[1].priority).to.equal(-1);
+      expect(redbird.resolvers[1].resolverCallback).to.deep.equal(resolver);
+      redbird.close();
+    });
 
+    it('when resolver is an object', () => {
+      const resolver = {
+        match: /^\/test/,
+        priority: 1
+      }
+
+      const options = _.extend({
+        resolvers: resolver
+      }, opts);
+
+      const redbird = Redbird(options);
+
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].match).to.equal(resolver.match);
+    });
   });
 
 
@@ -220,7 +249,7 @@ describe("Custom Resolver", function(){
   describe('middleware', () => {
     it('matches the request via regex', async (done) => {
       const proxy = new Redbird(opts);
-      proxy.addResolver(/\/test/)
+      proxy.addResolver({ match: /\/test/ })
         .use((context, request, response, next) => {
           try {
             expect(context).to.have.property('src', 'host.com');
@@ -243,7 +272,7 @@ describe("Custom Resolver", function(){
     it('executes all the middleware', async (done) => {
       const proxy = new Redbird(opts);
       let count = 0;
-      proxy.addResolver(/\/test/)
+      proxy.addResolver({ match: /\/test/ })
         .use((context, request, response, next) => {
           count++;
           next();
@@ -267,7 +296,7 @@ describe("Custom Resolver", function(){
     it('stops execution of middleware on response.end()', async (done) => {
       const proxy = new Redbird(opts);
       let count = 0;
-      proxy.addResolver(/\/test/)
+      proxy.addResolver({ match: /\/test/ })
         .use((context, request, response, next) => {
           count++;
           response.end();
@@ -294,9 +323,8 @@ describe("Custom Resolver", function(){
     it('stops execution of middleware on error', async (done) => {
       const proxy = new Redbird(opts);
       let count = 0;
-      proxy.addResolver(/\/test/)
+      proxy.addResolver({ match: /\/test/ })
         .use((context, request, response, next) => {
-          console.log(next.toString());
           next(new Error('test'));
         })
         .use((context, request, response, next) => {

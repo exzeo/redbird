@@ -10,23 +10,47 @@ const authService = {
   }
 };
 
-server.addResolver(/^\/test-route/)
+server.addResolver({
+  match: /^\/test-route/,
+  priority: 50
+})
   .use((context, request, response, next) => {
     authService.checkClaim()
       .then(
         authorized => {
-          console.log(`setting route ${authorized}`);
+          console.log(`1 setting route ${authorized}`);
           context.route = 'http://127.0.0.1:8181';
           next();
         }
       );
   })
   .use((context, request, response, next) => {
-    console.log('next thing');
+    console.log('1 next thing');
     next();
   });
 
-server.addResolver(/^\/error/)
+server.addResolver({
+  match: /^\/test*/,
+  priority: 100
+})
+  .use((context, request, response, next) => {
+    authService.checkClaim()
+      .then(
+        authorized => {
+          console.log(`2 setting route ${authorized}`);
+          context.route = 'http://127.0.0.1:8181';
+          next();
+        }
+      );
+  })
+  .use((context, request, response, next) => {
+    console.log('2 next thing');
+    next();
+  });
+
+server.addResolver({
+  match: /^\/error/
+})
   .use((context, request, response, next) => {
     response.writeHead(401);
     response.end();
