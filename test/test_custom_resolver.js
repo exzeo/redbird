@@ -2,6 +2,7 @@
 
 var Redbird = require('../');
 var expect = require('chai').expect;
+const assert = require('assert');
 var _ = require('lodash');
 
 var opts = {
@@ -216,7 +217,117 @@ describe("Custom Resolver", function(){
     proxy.close();
   });
 
-  async function mockRequest(proxy, host, path) {
-    return await proxy.resolve({ src: host }, { headers: { host: host }, url: path }, {});
+  describe('middleware', () => {
+    it('matches the request via regex', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver(/\/test/)
+        .use((context, request, response, next) => {
+          try {
+            expect(context).to.have.property('src', 'host.com');
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      const result = await mockRequest(proxy, 'host.com', '/bad-path');
+      try {
+        expect(result).to.be.undefined;
+
+        await mockRequest(proxy, 'host.com', '/test');
+      } catch (ex) {
+        done(ex);
+      }
+    });
+
+    it('executes all the middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver(/\/test/)
+        .use((context, request, response, next) => {
+          count++;
+          next();
+        })
+        .use((context, request, response, next) => {
+          count++;
+          next();
+        })
+        .use((context, request, response, next) => {
+          try {
+            expect(count).to.equal(2);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('stops execution of middleware on response.end()', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver(/\/test/)
+        .use((context, request, response, next) => {
+          count++;
+          response.end();
+          next();
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      try {
+        const out = {};
+        const result = await mockRequest(proxy, 'host.com', '/test', out);
+        expect(out.response.finished).to.be.true;
+        done();
+      } catch (ex) {
+        done(ex);
+      }
+    });
+
+    it('stops execution of middleware on error', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver(/\/test/)
+        .use((context, request, response, next) => {
+          console.log(next.toString());
+          next(new Error('test'));
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      try {
+        const out = {};
+        const result = await mockRequest(proxy, 'host.com', '/test', out);
+      } catch (ex) {
+        try {
+          expect(ex).to.have.property('message', 'test');
+          done();
+        } catch (ex) {
+          done(ex);
+        }
+      }
+    });
+  });
+
+  async function mockRequest(proxy, host, path, out = {}) {
+    out.context = { src: host };
+    out.request = { headers: { host: host }, url: path };
+    out.response = {
+      end() { this.finished = true; }
+    };
+
+    return await proxy.resolve(out.context, out.request, out.response);;
   }
 });
