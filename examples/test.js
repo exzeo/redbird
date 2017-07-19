@@ -3,11 +3,17 @@
 const server = require('../index.js')({ port: 8080, 
   defaultErrorHandler(error, request, response) {
     console.log(error.message);
-    response.writeHead(500);
-    response.write('default error handler');
+    response.writeHead(error.status || 500);
+    response.write(error.message);
     response.end();
   }
 });
+
+
+const redis = require('redis');
+const redisClient = redis.createClient();
+
+const { middleware: rateLimiter, createRedisRateLimiterProvider } = require('../lib/rate-limiter');
 
 const authService = {
   checkClaim() {
@@ -18,9 +24,33 @@ const authService = {
 };
 
 server.addResolver({
-  match: /^\/test-route/,
+  match: /^\/test-route(\/*)?/,
   priority: 100
 })
+  .use((context, request, response, next) => {
+    const match = /(bypass)|(preferred)/.exec(request.url);
+    if (match) {
+      switch (match[0]) {
+        case 'bypass':
+          context.bypassRateLimits = true;
+          break;
+        case 'preferred':
+          context.alternateLimits = [
+            { amount: 5, precision: 1000 }
+          ];
+          break;
+      }
+    }
+
+    next();
+  })
+  .use(rateLimiter({
+    provider: createRedisRateLimiterProvider({ client: redisClient }),
+    limits: [
+      { amount: 2, precision: 1000 },
+      { amount: 100, precision: 60 * 1000 }
+    ]
+  }))
   .use((context, request, response, next) => {
     authService.checkClaim()
       .then(
