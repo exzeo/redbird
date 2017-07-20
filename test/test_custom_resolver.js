@@ -2,6 +2,7 @@
 
 var Redbird = require('../');
 var expect = require('chai').expect;
+const assert = require('assert');
 var _ = require('lodash');
 
 var opts = {
@@ -23,51 +24,83 @@ describe("Custom Resolver", function(){
     var redbird = Redbird(opts);
     expect(redbird.resolvers).to.be.an('array');
     expect(redbird.resolvers.length).to.be.eq(1);
-    expect(redbird.resolvers[0]).to.be.eq(redbird._defaultResolver);
+    expect(redbird.resolvers[0].resolverCallback).to.be.eq(redbird._defaultResolver);
 
     redbird.close();
   });
 
-	it("Should register resolver with right priority", function(){
-    var resolver = function () {
-      return 'http://127.0.0.1:8080';
-    };
+  describe('Should error with with invalid resolvers', () => {
+    it('throws an error when an empty object is passed', () => {
+      const options = _.extend({
+        resolvers: {}
+      }, opts);
+      options.resolvers = {};
+      expect(function () {
+        new Redbird(options)
+      }).to.throw(Error);
+    });
+  });
 
-    resolver.priority = 1;
+	describe("Should register resolver with right priority", () => {
+    it('when resolver is a function', () => {
+      const resolver = function () {
+        return 'http://127.0.0.1:8080';
+      };
 
-    var options = _.extend({
-      resolvers: resolver
-    }, opts);
+      resolver.priority = 1;
 
-		var redbird = Redbird(options);
+      const options = _.extend({
+        resolvers: resolver
+      }, opts);
 
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eql(resolver);
+      const redbird = Redbird(options);
 
-		redbird.close();
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
+    });
 
+    it('when resolver is an array of functions', () => {
+      const resolver = function () {
+        return 'http://127.0.0.1:8080';
+      };
 
-    // test when an array is sent in as resolvers.
-    options.resolvers = [resolver];
-    redbird = new Redbird(options);
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eql(resolver);
-    redbird.close();
+      resolver.priority = 1;
 
-    resolver.priority = -1;
-    redbird = new Redbird(options);
-    expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[1]).to.be.eql(resolver);
-    redbird.close();
+      const options = _.extend({
+        resolvers: [resolver]
+      }, opts);
 
+      let redbird = Redbird(options);
 
-    // test when invalid resolver is added
-    options.resolvers = {};
-    expect(function () {
-       new Redbird(options)
-    }).to.throw(Error);
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].resolverCallback).to.deep.equal(resolver);
 
+      resolver.priority = -1;
+      redbird = new Redbird(options);
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[1].priority).to.equal(-1);
+      expect(redbird.resolvers[1].resolverCallback).to.deep.equal(resolver);
+      redbird.close();
+    });
 
+    it('when resolver is an object', () => {
+      const resolver = {
+        match: /^\/test/,
+        priority: 1
+      }
+
+      const options = _.extend({
+        resolvers: resolver
+      }, opts);
+
+      const redbird = Redbird(options);
+
+      expect(redbird.resolvers.length).to.be.eq(2);
+      expect(redbird.resolvers[0].priority).to.equal(1);
+      expect(redbird.resolvers[0].match).to.equal(resolver.match);
+    });
   });
 
 
@@ -79,7 +112,7 @@ describe("Custom Resolver", function(){
     var redbird = Redbird(opts);
     redbird.addResolver(resolver);
     expect(redbird.resolvers.length).to.be.eq(2);
-    expect(redbird.resolvers[0]).to.be.eq(resolver);
+    expect(redbird.resolvers[0].resolverCallback).to.equal(resolver);
 
     redbird.addResolver(resolver);
     expect(redbird.resolvers.length, 'Only allows uniques.').to.be.eq(2);
@@ -87,7 +120,7 @@ describe("Custom Resolver", function(){
 
     redbird.removeResolver(resolver);
     expect(redbird.resolvers.length).to.be.eq(1);
-    expect(redbird.resolvers[0]).to.be.eq(redbird._defaultResolver);
+    expect(redbird.resolvers[0].resolverCallback).to.be.equal(redbird._defaultResolver);
 
     redbird.close();
 
@@ -149,7 +182,7 @@ describe("Custom Resolver", function(){
 
   });
 
-  it("Should resolve properly as expected", function () {
+  it("Should resolve properly as expected", async function () {
 
     var proxy = new Redbird(opts), resolver = function (host, url) {
       return url.match(/\/ignore/i) ? null : 'http://172.12.0.1/home'
@@ -160,7 +193,7 @@ describe("Custom Resolver", function(){
     proxy.register('mysite.example.com', 'http://127.0.0.1:9999');
     proxy.addResolver(resolver);
 
-    result = proxy.resolve('randomsite.example.com', '/anywhere');
+    result = await mockRequest(proxy, 'randomsite.example.com', '/anywhere');
 
     // must match the resolver
     expect(result).to.not.be.null;
@@ -169,24 +202,25 @@ describe("Custom Resolver", function(){
     expect(result.urls[0].hostname).to.be.eq('172.12.0.1');
 
     // expect route to match resolver even though it matches registered address
-    result = proxy.resolve('mysite.example.com', '/somewhere');
+    result = await mockRequest(proxy, 'mysite.example.com', '/somewhere');
     expect(result.urls[0].hostname).to.be.eq('172.12.0.1');
 
     // use default resolver, as custom resolver should ignore input.
-    result = proxy.resolve('mysite.example.com', '/ignore');
+    result = await mockRequest(proxy, 'mysite.example.com', '/ignore');
     expect(result.urls[0].hostname).to.be.eq('127.0.0.1');
 
 
     // make custom resolver low priority and test.
     // result should match default resolver
+    proxy.removeResolver(resolver);
     resolver.priority = -1;
     proxy.addResolver(resolver);
-    result = proxy.resolve('mysite.example.com', '/somewhere');
+    result = await mockRequest(proxy, 'mysite.example.com', '/somewhere');
     expect(result.urls[0].hostname).to.be.eq('127.0.0.1');
 
 
     // both custom and default resolvers should ignore
-    result = proxy.resolve('somesite.example.com', '/ignore');
+    result = await mockRequest(proxy, 'somesite.example.com', '/ignore');
     expect(result).to.be.undefined;
 
     proxy.removeResolver(resolver);
@@ -202,18 +236,194 @@ describe("Custom Resolver", function(){
     resolver.priority = 1;
     proxy.addResolver(resolver);
 
-    result = proxy.resolve('somesite.example.com', '/notme');
+    result = await mockRequest(proxy, 'somesite.example.com', '/notme');
     expect(result).to.not.be.undefined;
     expect(result.urls[0].hostname).to.be.eq('172.12.0.1');
 
-    result = proxy.resolve('somesite.example.com', '/notme/somewhere');
+    result = await mockRequest(proxy, 'somesite.example.com', '/notme/somewhere');
     expect(result.urls[0].hostname).to.be.eq('172.12.0.1');
-
-    result = proxy.resolve('somesite.example.com', '/itsme/somewhere');
-    expect(result).to.be.undefined;
-
 
     proxy.close();
   });
 
+  describe('middleware', () => {
+    it('matches the request via regex', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          try {
+            expect(context).to.have.property('src', 'host.com');
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      const result = await mockRequest(proxy, 'host.com', '/bad-path');
+      try {
+        expect(result).to.be.undefined;
+
+        await mockRequest(proxy, 'host.com', '/test');
+      } catch (ex) {
+        done(ex);
+      }
+    });
+
+    it('executes all the middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          count++;
+          next();
+        })
+        .use((context, request, response, next) => {
+          count++;
+          next();
+        })
+        .use((context, request, response, next) => {
+          try {
+            expect(count).to.equal(2);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('stops execution of middleware on response.end()', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          count++;
+          response.end();
+          next();
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      try {
+        const out = {};
+        const result = await mockRequest(proxy, 'host.com', '/test', out);
+        expect(out.response.finished).to.be.true;
+        done();
+      } catch (ex) {
+        done(ex);
+      }
+    });
+
+    it('stops execution of middleware on error', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          next(new Error('test'));
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      try {
+        const out = {};
+        const result = await mockRequest(proxy, 'host.com', '/test', out);
+      } catch (ex) {
+        try {
+          expect(ex).to.have.property('message', 'test');
+          done();
+        } catch (ex) {
+          done(ex);
+        }
+      }
+    });
+
+    it('forwards errors to error middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          next(new Error('test'));
+        })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        })
+        .use((error, context, request, response, next) => {
+          try {
+            expect(error).to.have.property('message', 'test');
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('can use promises to move to the next middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      let count = 0;
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response) => {
+          ++count;
+          return Promise.resolve();
+        })
+        .use((context, request, response, next) => {
+          try {
+            expect(++count).to.equal(2);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+
+    it('can use promises to move to the next error middleware', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/ })
+        .use((context, request, response, next) => {
+          next(new Error('test'));
+        })
+        .use((error, context, request, response, next) => {
+          error.status = 404;
+          return Promise.resolve(error);
+        })
+        .use((error, context, request, response, next) => {
+          try {
+            expect(error).to.have.property('message', 'test');
+            expect(error).to.have.property('status', 404);
+            done();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      await mockRequest(proxy, 'host.com', '/test');
+    });
+  });
+
+  async function mockRequest(proxy, host, path, out = {}) {
+    out.context = { src: host };
+    out.request = { headers: { host: host }, url: path };
+    out.response = {
+      end() { this.finished = true; }
+    };
+
+    return await proxy.resolve(out.context, out.request, out.response);;
+  }
 });
