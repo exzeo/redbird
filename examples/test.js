@@ -2,7 +2,7 @@
 
 const server = require('../index.js')({ port: 8080, 
   defaultErrorHandler(error, request, response) {
-    console.log(error.message);
+    console.log(error);
     response.writeHead(error.status || 500);
     response.write(error.message);
     response.end();
@@ -13,7 +13,7 @@ const server = require('../index.js')({ port: 8080,
 const redis = require('redis');
 const redisClient = redis.createClient();
 
-const { middleware: rateLimiter, createRedisRateLimiterProvider } = require('../lib/rate-limiter');
+const { middleware: rateLimit, redisRateLimiter } = require('../rate-limiter/lib');
 
 const authService = {
   checkClaim() {
@@ -44,12 +44,14 @@ server.addResolver({
 
     next();
   })
-  .use(rateLimiter({
-    provider: createRedisRateLimiterProvider({ client: redisClient }),
-    limits: [
-      { amount: 2, precision: 1000 },
-      { amount: 100, precision: 60 * 1000 }
-    ]
+  .use(rateLimit({
+    rateLimiter: redisRateLimiter.create({ 
+      client: redisClient,
+      limits: [
+        { amount: 2, precision: 1000 },
+        { amount: 100, precision: 60 * 1000 }
+      ]
+    })
   }))
   .use((context, request, response, next) => {
     authService.checkClaim()
