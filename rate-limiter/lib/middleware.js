@@ -2,7 +2,7 @@
 
 const inMemoryRateLimiter = require('./rate-limiters/in-memory-rate-limiter');
 
-function middleware(options) {
+function middleware(options = {}) {
   let {
     rateLimiter = null
   } = options;
@@ -13,10 +13,10 @@ function middleware(options) {
 
   return (context, request, response, next) => {
     if (context.bypassRateLimits) {
-      return next();
+      return Promise.resolve(next());
     }
 
-    rateLimiter.validateRequest(context.id, context.alternateLimits)
+    return rateLimiter.validateRequest(context.id, context.alternateLimits)
       .then(next, next);
   };
 }
