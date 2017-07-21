@@ -415,12 +415,39 @@ describe("Custom Resolver", function(){
 
       await mockRequest(proxy, 'host.com', '/test');
     });
+
+    it('should not continue resolving after having resolved', async (done) => {
+      const proxy = new Redbird(opts);
+      proxy.addResolver({ match: /\/test/, priority: 1 })
+        .use((context, request, response, next) => {
+          response.writeHead(204);
+          response.end();
+        });
+      proxy.addResolver({ match: /\/.*/, priority: 0 })
+        .use((context, request, response, next) => {
+          try {
+            assert.fail();
+          } catch (ex) {
+            done(ex);
+          }
+        });
+
+      const out = {};
+      const result = await mockRequest(proxy, 'host.com', '/test', out);
+      try {
+        expect(out.response.finished).to.be.true;
+        done();
+      } catch (ex) {
+        done(ex);
+      }
+    });
   });
 
   async function mockRequest(proxy, host, path, out = {}) {
     out.context = { src: host };
     out.request = { headers: { host: host }, url: path };
     out.response = {
+      writeHead() { },
       end() { this.finished = true; }
     };
 
