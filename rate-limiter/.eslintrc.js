@@ -12,6 +12,9 @@ module.exports = {
     "consistent-return": [0],
     "arrow-body-style": [1, "as-needed"],
     "import/no-unresolved": [0],
-    "strict": [0, "global"]
+    "strict": [0, "global"],
+    "global-require": [0],
+    "no-plusplus": [0],
+    "no-restricted-syntax": [0]
   }
 };

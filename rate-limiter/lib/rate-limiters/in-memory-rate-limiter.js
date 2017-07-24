@@ -7,13 +7,13 @@ function createInMemoryRateLimiter(options = {}) {
 
   return Object.assign(rateLimiter.create(options), {
     incrementRequest(id, limits) {
-      return Promise.resolve(limits.map(limit => {
+      return Promise.resolve(limits.map((limit) => {
         const key = `${id}:${limit.precision}`;
 
         if (!sets[key]) {
           sets[key] = [];
         }
-        
+
         const ts = Date.now();
         const aged = ts - limit.precision;
 
@@ -31,7 +31,7 @@ function createInMemoryRateLimiter(options = {}) {
         if (sets[key].length < limit.amount) {
           sets[key].push(ts);
         }
-        
+
         return count;
       }));
     }

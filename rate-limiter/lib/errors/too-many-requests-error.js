@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = class TooManyRequestsError extends require('./status-error') {
-  constructor () {
+  constructor() {
     super('Too Many Requests', 429);
   }
 };

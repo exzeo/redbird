@@ -11,10 +11,10 @@ function createRateLimiter(options = {}) {
 
   return {
     validateRequest(id, alternateLimits) {
-      let requestLimits = alternateLimits || limits;
+      const requestLimits = alternateLimits || limits;
 
       return this.incrementRequest(id, requestLimits)
-        .then(counts => {
+        .then((counts) => {
           const limitRequest = counts.some((c, i) => c >= requestLimits[i].amount);
 
           if (limitRequest) {

@@ -8,31 +8,31 @@ function incrementRequest(client, addSha, id, limit) {
   const key = `${id}:${limit.precision}`;
   return client
     .zremrangebyscore(key, 0, aged)
-    .zcard(key)    
+    .zcard(key)
     .evalsha(addSha, 1, key, limit.amount, ts)
     .expire(key, Math.ceil((ts + limit.precision + 1) / 1000));
 }
 
 function createRedisRateLimiter(options = {}) {
-  let {
+  const {
     client = null
   } = options;
 
-  let loadScript = new Promise((resolve, reject) => {
-    client.script('load', 
-`local c = tonumber(redis.call('ZCARD', KEYS[1]));
+  const loadScript = new Promise((resolve, reject) => {
+    client.script('load',
+      `local c = tonumber(redis.call('ZCARD', KEYS[1]));
 if c == nil or tonumber(ARGV[1]) > c then
   redis.call('zadd', KEYS[1], ARGV[2], ARGV[2]);
   return 1;
 else
   return 0;
 end`, (error, scriptSha) => {
-      if (error) {
-        return reject(error);
-      }
+        if (error) {
+          return reject(error);
+        }
 
-      resolve(scriptSha);
-    });
+        resolve(scriptSha);
+      });
   });
 
   return Object.assign(rateLimiter.create(options), {
@@ -52,7 +52,7 @@ end`, (error, scriptSha) => {
             resolve(counts);
           });
         })
-      );
+        );
     }
   });
 }
