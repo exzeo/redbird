@@ -441,6 +441,31 @@ describe("Custom Resolver", function(){
         done(ex);
       }
     });
+
+    it('should not call middleware twice for a given request', async (done) => {
+      const proxy = new Redbird(opts);
+      let middleware1 = 0;
+      let middleware2 = 0;
+      proxy.addResolver({ match: /\/test/, priority: 1 })
+        .use((context, request, response, next) => {
+          ++middleware1;
+          return Promise.resolve(next());
+        })
+        .use((context, request, response, next) => {
+          ++middleware2;
+          return Promise.resolve(next());
+        });
+
+      const result = await mockRequest(proxy, 'host.com', '/test');
+      try {
+        expect(middleware1).to.equal(1);
+        expect(middleware2).to.equal(1);
+        done();
+      } catch (ex) {
+        done(ex);
+      }
+
+    });
   });
 
   async function mockRequest(proxy, host, path, out = {}) {
