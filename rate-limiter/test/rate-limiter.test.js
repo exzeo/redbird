@@ -4,7 +4,7 @@ const expect = require('chai').expect;
 const assert = require('assert');
 const sinon = require('sinon');
 
-context.only('rate limiter', () => {
+context('rate limiter', () => {
   const RateLimiter = require('../lib/rate-limiters/rate-limiter');
   const errors = require('../lib/errors');
 
