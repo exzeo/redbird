@@ -1,19 +1,12 @@
 'use strict';
 
-const server = require('../index.js')({ port: 8080, 
-  defaultErrorHandler(error, request, response) {
-    console.log(error);
-    response.writeHead(error.status || 500);
-    response.write(error.message);
-    response.end();
-  }
-});
+const server = require('../index.js')({ port: 8080 });
 
 
 const redis = require('redis');
 const redisClient = redis.createClient();
 
-const { middleware: rateLimit, redisRateLimiter } = require('../rate-limiter/lib');
+const { middleware: rateLimit, redisRateLimiter } = require('exframe-rate-limiter');
 
 const authService = {
   checkClaim() {
