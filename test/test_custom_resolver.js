@@ -246,6 +246,24 @@ describe("Custom Resolver", function(){
     proxy.close();
   });
 
+  describe('error processing', () => {
+    it('returns a generic 500 internal server error', () => {
+      const responseMock = { write() {}, end() {} }
+      const proxy = new Redbird(opts);
+      proxy.defaultErrorHandler(new Error('test'), {}, responseMock);
+      expect(responseMock.statusCode).to.equal(500);
+    });
+
+    it('uses the error status and message if status is set', () => {
+      const responseMock = { write() {}, end() {} }
+      const proxy = new Redbird(opts);
+      const error = new Error('test');
+      error.status = 404;
+      proxy.defaultErrorHandler(error, {}, responseMock);
+      expect(responseMock.statusCode).to.equal(404);
+    })
+  });
+
   describe('middleware', () => {
     it('matches the request via regex', async (done) => {
       const proxy = new Redbird(opts);
