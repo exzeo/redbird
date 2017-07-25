@@ -18,6 +18,10 @@ function createRedisRateLimiter(options = {}) {
     client = null
   } = options;
 
+  if (!client) {
+    throw new Error('Option `client` is required.');
+  }
+
   const loadScript = new Promise((resolve, reject) => {
     client.script('load',
       `local c = tonumber(redis.call('ZCARD', KEYS[1]));
