@@ -484,11 +484,24 @@ describe("Custom Resolver", function(){
       }
 
     });
+
+    it('should not route if method does not match', async () => {
+      const proxy = new Redbird(opts);
+      let middleware = 0;
+      proxy.addResolver({ method: 'POST', match: /\/test/, priority: 1 })
+        .use((context, request, response, next) => {
+          ++middleware;
+          return Promise.resolve(next());
+        });
+
+      const result = await mockRequest(proxy, 'host.com', '/test');
+      expect(result).to.be.undefined;
+    });
   });
 
   async function mockRequest(proxy, host, path, out = {}) {
     out.context = { src: host };
-    out.request = { headers: { host: host }, url: path };
+    out.request = { method: 'GET', headers: { host: host }, url: path };
     out.response = {
       writeHead() { },
       end() { this.finished = true; }
