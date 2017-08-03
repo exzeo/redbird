@@ -16,8 +16,8 @@ const authService = {
     });
   }
 };
-
 server.addResolver({
+  method: 'GET',
   match: /^\/test-route/,
   priority: 100
 })
@@ -32,7 +32,27 @@ server.addResolver({
       );
   })
   .use((context, request, response, next) => {
-    console.log('1 next thing');
+    console.log('GET next thing');
+    next();
+  });
+
+server.addResolver({
+  method: 'POST',
+  match: /^\/test-route/,
+  priority: 100
+})
+  .use((context, request, response, next) => {
+    authService.checkClaim()
+      .then(
+        authorized => {
+          console.log(`1 setting route ${authorized}`);
+          context.route = 'http://127.0.0.1:8181';
+          next();
+        }
+      );
+  })
+  .use((context, request, response, next) => {
+    console.log('POST next thing');
     next();
   });
 

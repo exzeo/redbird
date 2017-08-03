@@ -14,7 +14,6 @@ rules:
   radix: 2
   space-after-function-name: [2, "never"]
   space-after-keywords: [2, "always"]
-  space-before-blocks: [2, "never"]
   spaced-line-comment: [2, "always", { exceptions: ["-"]}]
   valid-jsdoc: [2, { prefer: { "return": "returns"}}]
   wrap-iife: 2
